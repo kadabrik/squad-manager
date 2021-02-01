@@ -1,9 +1,11 @@
 from enum import Enum, auto
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
+
 
 class AutoNameEnum(Enum):
     def _generate_next_value_(name, start, count, last_values):
         return name
+
 
 class Position(AutoNameEnum):
     GK = auto(),
@@ -26,7 +28,7 @@ class Position(AutoNameEnum):
 class Team:
 
     def __init__(self) -> None:
-        self.positions: Dict[Position, Tuple[str, Position]] = {
+        self.squad: Dict[Position, Optional[Tuple[str, Position]]] = {
             Position.GK: None,
             Position.LB: None,
             Position.RB: None,
@@ -40,42 +42,54 @@ class Team:
             Position.CF: None,
         }
 
+    def _get_registered_position(self, name: str) -> Optional[Position]:
+        occupied_positions = {(k, v) for k, v in self.squad.items() if v is not None}
+        for k, (v, _) in occupied_positions:
+            if v == name:
+                return k
+        return None
+
     def join(self, position: Position, name: str, hint: Position = None) -> None:
-        '''Assign a player to a specific position'''
-        if position not in self.positions:
+        """Assign a player to a specific position"""
+        if position not in self.squad:
             raise PositionUnavailable
 
-        occupiedPositions = set([v for v in self.positions.values() if v is not None])
-        registeredPosition = set([k for k, _ in occupiedPositions if k == name])
-        if registeredPosition:
-            raise PositionDuplicated
+        registered_position = self._get_registered_position(name)
 
-        if self.positions[position] is not None:
-            raise PositionOccupied
+        if position != registered_position:
+            if self.squad[position] is not None:
+                raise PositionOccupied
+            if registered_position is not None:
+                raise PositionDuplicated
 
-        self.positions[position] = (name, hint)
+        self.squad[position] = (name, hint)
 
     def leave(self, name) -> None:
-        '''Leave position where player previosely registered'''
-        pass
+        """Leave position where player previously registered"""
+        registered_position = self._get_registered_position(name)
+        if registered_position is not None:
+            self.squad[registered_position] = None
 
     def clear(self, position: Position) -> None:
-        '''Remove a player from desired position'''
+        """Remove a player from desired position"""
         pass
 
     def reset(self) -> None:
-        '''Clear all positions configured for the team'''
+        """Clear all positions configured for the team"""
         pass
 
     def configure(self, positions: List[Position]) -> None:
-        '''Configure positions available in the team'''
+        """Configure positions available in the team"""
         pass
+
 
 class PositionOccupied(Exception):
     pass
 
+
 class PositionUnavailable(Exception):
     pass
+
 
 class PositionDuplicated(Exception):
     pass
